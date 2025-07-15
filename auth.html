@@ -1,0 +1,21 @@
+<!DOCTYPE html><meta charset="utf-8">
+<script>
+  // https://example.com/auth.html?id=S01
+  const id   = new URL(location).searchParams.get("id");
+  if (!id) { document.body.textContent = "Missing id"; throw 0; }
+
+  fetch(`https://eo1234abcde1234.m.pipedream.net/pre?p=${id}`)  // ➊
+    .then(r => r.text())                                        //   returns verifier
+    .then(ver => {
+      const url =
+        "https://www.fitbit.com/oauth2/authorize" +
+        "?response_type=code" +
+        "&client_id=23PDSH" +
+        "&code_challenge_method=plain" +
+        `&code_challenge=${ver}` +
+        "&scope=profile%20activity%20heartrate%20sleep%20nutrition" +
+        `&state=${id}` +
+        "&redirect_uri=https%3A%2F%2Fjzchinn.github.io%2Ffitbit-redirect%2Fredirect.html";
+      location.replace(url);
+    });
+</script>
