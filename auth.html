@@ -4,7 +4,7 @@
   const id   = new URL(location).searchParams.get("id");
   if (!id) { document.body.textContent = "Missing id"; throw 0; }
 
-  fetch(`https://1fc831fb42c8bfabefec5f24ad084cd0.m.pipedream.net/pre?p=${id}`)
+  fetch(`https://eos5bz8svgd0m94.m.pipedream.net/pre?p=${id}`)
     .then(r => r.text())                                        //   returns verifier
     .then(ver => {
       const url =
