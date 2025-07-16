@@ -1,21 +1,60 @@
-<!DOCTYPE html><meta charset="utf-8">
-<script>
-  // https://example.com/auth.html?id=S01
-  const id   = new URL(location).searchParams.get("id");
-  if (!id) { document.body.textContent = "Missing id"; throw 0; }
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Fitbit Login</title>
+<style>
+  body { font-family: system-ui, sans-serif; }
+  main { max-width: 28em; margin: 4rem auto; text-align: center; }
+</style>
 
-  fetch(`https://eos5bz8svgd0m94.m.pipedream.net/pre?p=${id}`)
-    .then(r => r.text())                                        //   returns verifier
-    .then(ver => {
-      const url =
-        "https://www.fitbit.com/oauth2/authorize" +
-        "?response_type=code" +
-        "&client_id=23PDSH" +
-        "&code_challenge_method=plain" +
-        `&code_challenge=${ver}` +
-        "&scope=profile%20activity%20heartrate%20sleep%20nutrition" +
-        `&state=${id}` +
-        "&redirect_uri=https%3A%2F%2Fjzchinn.github.io%2Ffitbit-redirect%2Fredirect.html";
-      location.replace(url);
-    });
+<main id="app">Preparing…</main>
+
+<script>
+(async () => {
+  /* ---------- 0 · constants you edit ---------- */
+  const PD_BASE   = "https://eos5bz8svgd0m94.m.pipedream.net";  // 🔧 your Pipedream endpoint
+  const CLIENT_ID = "23PDSH";                                   // 🔧 your 6-char ID
+  const REDIRECT  = "https://jzchinn.github.io/fitbit-redirect/redirect.html";
+
+  /* ---------- 1 · get participant id ---------- */
+  const id = new URL(location).searchParams.get("id");
+  const app = document.getElementById("app");
+  if (!id) { app.textContent = "❌ Missing ?id= in URL"; return; }
+
+  /* ---------- 2 · GET /pre → 64-char verifier ---------- */
+  let verifier;
+  try {
+    const res = await fetch(`${PD_BASE}/pre?p=${encodeURIComponent(id)}`);
+    if (!res.ok) throw new Error(await res.text());
+    verifier = await res.text();                    // 64-char string
+    if (verifier.length < 43) throw new Error("short verifier");
+  } catch (err) {
+    app.textContent = "❌ Verifier error: " + err;
+    return;
+  }
+
+  /* ---------- 3 · compute S256 challenge ---------- */
+  const hashBuf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(verifier)
+  );
+  const b64 = btoa(String.fromCharCode(...new Uint8Array(hashBuf)))
+                .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+
+  /* ---------- 4 · build Fitbit authorize URL ---------- */
+  const scope = "profile activity heartrate sleep nutrition";
+  const authURL = [
+    "https://www.fitbit.com/oauth2/authorize",
+    "?response_type=code",
+    `&client_id=${CLIENT_ID}`,
+    "&code_challenge_method=S256",
+    `&code_challenge=${b64}`,
+    `&scope=${encodeURIComponent(scope)}`,
+    `&state=${id}`,
+    `&redirect_uri=${encodeURIComponent(REDIRECT)}`
+  ].join("");
+
+  /* ---------- 5 · redirect ---------- */
+  app.textContent = "Redirecting to Fitbit…";
+  location.replace(authURL);
+})();
 </script>
