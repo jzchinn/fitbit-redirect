@@ -41,7 +41,7 @@
                 .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 
   /* ---------- 4 · build Fitbit authorize URL ---------- */
-  const scope = "profile activity heartrate sleep nutrition";
+  const scope = "activity heartrate sleep";
   const authURL = [
     "https://www.fitbit.com/oauth2/authorize",
     "?response_type=code",
