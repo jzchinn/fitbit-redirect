@@ -5,41 +5,32 @@
   body { font-family: system-ui, sans-serif; }
   main { max-width: 28em; margin: 4rem auto; text-align: center; }
 </style>
-
 <main id="app">Preparing…</main>
-
 <script>
 (async () => {
   /* ---------- 0 · constants you edit ---------- */
-  const PD_BASE   = "https://eos5bz8svgd0m94.m.pipedream.net";  // 🔧 your Pipedream endpoint
-  const CLIENT_ID = "23PDSH";                                   // 🔧 your 6-char ID
+  const CLIENT_ID = "23PDSH";                                   
   const REDIRECT  = "https://jzchinn.github.io/fitbit-redirect/redirect.html";
-
+  
   /* ---------- 1 · get participant id ---------- */
   const id = new URL(location).searchParams.get("id");
   const app = document.getElementById("app");
   if (!id) { app.textContent = "❌ Missing ?id= in URL"; return; }
-
-  /* ---------- 2 · GET /pre → 64-char verifier ---------- */
-  let verifier;
-  try {
-    const res = await fetch(`${PD_BASE}/pre?p=${encodeURIComponent(id)}`);
-    if (!res.ok) throw new Error(await res.text());
-    verifier = await res.text();                    // 64-char string
-    if (verifier.length < 43) throw new Error("short verifier");
-  } catch (err) {
-    app.textContent = "❌ Verifier error: " + err;
-    return;
-  }
-
+  
+  /* ---------- 2 · generate verifier locally ---------- */
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  const verifier = btoa(String.fromCharCode(...array))
+    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+  
   /* ---------- 3 · compute S256 challenge ---------- */
   const hashBuf = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(verifier)
   );
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(hashBuf)))
-                .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(hashBuf)))
+    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"");
+  
   /* ---------- 4 · build Fitbit authorize URL ---------- */
   const scope = "activity heartrate sleep";
   const authURL = [
@@ -47,12 +38,12 @@
     "?response_type=code",
     `&client_id=${CLIENT_ID}`,
     "&code_challenge_method=S256",
-    `&code_challenge=${b64}`,
+    `&code_challenge=${challenge}`,
     `&scope=${encodeURIComponent(scope)}`,
-    `&state=${id}`,
+    `&state=${encodeURIComponent(`${id}.${verifier}`)}`,  // Safely encode state
     `&redirect_uri=${encodeURIComponent(REDIRECT)}`
   ].join("");
-
+  
   /* ---------- 5 · redirect ---------- */
   app.textContent = "Redirecting to Fitbit…";
   location.replace(authURL);
