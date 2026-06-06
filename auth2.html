@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Connect Google Health</title>
+<main id="app">Preparing…</main>
+<script>
+(() => {
+  const CLIENT_ID = "YOUR_ID.apps.googleusercontent.com";
+  const REDIRECT  = "https://jzchinn.github.io/fitbit-redirect/redirect.html"; // must be registered exactly in Cloud Console
+  const SCOPES = [
+    "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+    "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+    "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly"
+  ].join(" ");
+
+  const id = new URL(location).searchParams.get("id");
+  const app = document.getElementById("app");
+  if (!id) { app.textContent = "❌ Missing ?id= in URL"; return; }
+
+  const authURL = "https://accounts.google.com/o/oauth2/v2/auth?" + new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: REDIRECT,
+    response_type: "code",
+    access_type: "offline",   // ← needed for a refresh token
+    prompt: "consent",        // ← forces refresh token even on re-auth
+    scope: SCOPES,
+    state: id
+  });
+
+  app.textContent = "Redirecting to Google…";
+  location.replace(authURL);
+})();
+</script>
